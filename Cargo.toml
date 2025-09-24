@@ -1,6 +1,6 @@
 [package]
 name = "mtorrent-gui"
-version = "0.1.0"
+version = "0.1.1"
 description = "Simple GUI for mtorrent"
 edition = "2024"
 authors = ["Mikhail Vasilyev <mikail.vasilyev@gmail.com>"]
