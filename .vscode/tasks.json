@@ -22,7 +22,6 @@
 			"command": "tauri",
 			"args": [
 				"build",
-				"--no-bundle",
 			],
 			"problemMatcher": [
 				"$rustc"

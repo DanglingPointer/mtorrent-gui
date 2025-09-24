@@ -1,6 +1,6 @@
 FROM rust:1.88.0
 
-RUN rustup component add clippy rustfmt llvm-tools-preview
+RUN rustup component add clippy rustfmt
 
 # install nextest
 RUN curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
@@ -33,12 +33,6 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
 USER $USERNAME
-
-# install test coverage tools as non-root
-ARG COVERAGE=false
-RUN if [ "$COVERAGE" = "true" ]; then \
-    cargo install cargo-llvm-cov; \
-fi
 
 # install tauri as non-root
 RUN cargo install tauri-cli --version "^2.0.0" --locked

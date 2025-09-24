@@ -7,9 +7,6 @@
 		"context": "..",
 		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
 		"dockerfile": "Dockerfile",
-		"args": {
-			"COVERAGE": "false",
-		}
 	},
 	"workspaceMount": "source=${localWorkspaceFolder},target=/usr/src/mtorrent-gui,type=bind",
 	"workspaceFolder": "/usr/src/mtorrent-gui",
