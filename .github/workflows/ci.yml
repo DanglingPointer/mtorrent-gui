@@ -10,22 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  format:
-    name: Format and lint
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        components: rustfmt
-    - run: |
-        sudo apt-get update
-        sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev xdg-utils
-    - run: cargo fmt --check --verbose
-    - run: cargo clippy --all-targets --all-features -- -D warnings
-
-  gui:
-    name: Build and bundle
+  build:
+    name: Lint and build
     strategy:
       fail-fast: false
       matrix:
@@ -34,9 +20,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
-    - run: |
+    - if: matrix.os == 'ubuntu-latest'
+      run: |
         sudo apt-get update
         sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev xdg-utils
-    - run: cargo install tauri-cli --version "^2.0.0" --locked
-    - run: cargo tauri build --no-bundle
-    - run: cargo tauri build
+    - run: cargo fmt --check --verbose
+    - run: cargo clippy --all-targets --all-features -- -D warnings
+    - run: cargo build --release
