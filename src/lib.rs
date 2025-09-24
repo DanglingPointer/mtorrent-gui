@@ -68,7 +68,7 @@ fn start_download(
             },
             state.pwp_runtime_handle.clone(),
             state.storage_runtime_handle.clone(),
-            false, /* use_upnp */
+            true, /* use_upnp */
         )
         .map(move |ret| {
             _ = callback.send(match ret {
@@ -111,7 +111,7 @@ fn run_with_exit_code() -> i32 {
         6881,
         None,
         std::env::current_dir().unwrap(),
-        false, /* use_upnp */
+        true, /* use_upnp */
     );
 
     let state = State {
