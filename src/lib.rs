@@ -1,4 +1,3 @@
-use futures_util::FutureExt;
 use mtorrent::app;
 use mtorrent::utils::listener::{StateListener, StateSnapshot};
 use mtorrent_dht as dht;
@@ -38,48 +37,39 @@ struct State {
     active_downloads: Mutex<HashMap<String, Arc<()>>>,
 }
 
-#[tauri::command(async)]
-fn start_download(
+#[tauri::command]
+async fn start_download(
     metainfo_uri: String,
     output_dir: String,
     callback: tauri::ipc::Channel<String>,
     state: tauri::State<'_, State>,
-) {
+) -> Result<(), String> {
     let token = Arc::new(());
     match state.active_downloads.lock().unwrap().entry(metainfo_uri.clone()) {
         Entry::Occupied(_) => {
-            _ = callback.send("Failed to start download: already in progress".to_owned());
-            return;
+            return Err("already in progress".to_owned());
         }
         Entry::Vacant(entry) => {
-            _ = callback.send("Loading...".to_owned());
             entry.insert(token.clone());
         }
     }
-    tokio::task::spawn_local(
-        app::main::single_torrent(
-            state.peer_id,
-            metainfo_uri.clone(),
-            output_dir,
-            Some(state.dht_cmd_sender.clone()),
-            Listener {
-                callback: callback.clone(),
-                canceller: token,
-            },
-            state.pwp_runtime_handle.clone(),
-            state.storage_runtime_handle.clone(),
-            true, /* use_upnp */
-        )
-        .map(move |ret| {
-            _ = callback.send(match ret {
-                Ok(()) => "Download completed successfully!".to_owned(),
-                Err(e) => format!("Download failed: {e}"),
-            });
-        }),
-    );
+    let task = tokio::task::spawn_local(app::main::single_torrent(
+        state.peer_id,
+        metainfo_uri,
+        output_dir,
+        Some(state.dht_cmd_sender.clone()),
+        Listener {
+            callback,
+            canceller: token,
+        },
+        state.pwp_runtime_handle.clone(),
+        state.storage_runtime_handle.clone(),
+        true, /* use_upnp */
+    ));
+    task.await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
 }
 
-#[tauri::command(async)]
+#[tauri::command]
 fn stop_download(metainfo_uri: &str, state: tauri::State<'_, State>) {
     state.active_downloads.lock().unwrap().remove(metainfo_uri);
 }

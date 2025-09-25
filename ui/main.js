@@ -89,10 +89,13 @@ async function startDownload(panel, tabBtn) {
   form.querySelectorAll('input, button').forEach(el => el.disabled = true);
 
   try {
+    textarea.value = 'Loading...';
     await invoke('start_download', { metainfoUri: uri, outputDir, callback: channel });
+    textarea.value = 'Download finished successfully!';
   } catch (e) {
-    channel.onmessage(`Failed to start: ${e}`);
+    textarea.value = `Download failed: ${e}`;
   }
+  titleEl.textContent = 'Download finished';
 }
 
 function addNewTab(autoActivate = true) {
