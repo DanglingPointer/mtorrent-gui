@@ -5,18 +5,8 @@ RUN rustup component add clippy rustfmt
 # install nextest
 RUN curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
-# install tauri, see https://v2.tauri.app/start/prerequisites/
-RUN apt-get update && \
-    apt-get install -y libwebkit2gtk-4.1-dev \
-        build-essential \
-        curl \
-        wget \
-        file \
-        libxdo-dev \
-        libssl-dev \
-        libayatana-appindicator3-dev \
-        librsvg2-dev \
-        xdg-utils
+# install tauri dependencies, see https://v2.tauri.app/start/prerequisites/
+RUN apt-get update && apt-get install -y libwebkit2gtk-4.1-dev
 
 # create non-root user for vscode
 ARG USERNAME=devcontainer
@@ -34,5 +24,8 @@ RUN groupadd --gid $USER_GID $USERNAME \
 
 USER $USERNAME
 
-# install tauri as non-root
-RUN cargo install tauri-cli --version "^2.0.0" --locked
+# install tauri cli (prebuilt binary) as non-root
+RUN curl -LsSf "https://github.com/tauri-apps/tauri/releases/latest/download/cargo-tauri-x86_64-unknown-linux-gnu.tgz" -o /tmp/cargo-tauri.tgz \
+    && tar -xzf /tmp/cargo-tauri.tgz -C ${CARGO_HOME:-/usr/local/cargo}/bin \
+    && rm /tmp/cargo-tauri.tgz \
+    && cargo-tauri --version
