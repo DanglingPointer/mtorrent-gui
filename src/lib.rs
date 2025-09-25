@@ -133,6 +133,7 @@ fn run_with_exit_code() -> i32 {
     app.run_return(move |app_handle, event| {
         if let tauri::RunEvent::ExitRequested { .. } = event {
             let state = app_handle.state::<State>();
+            state.active_downloads.lock().unwrap().clear();
             _ = state.dht_cmd_sender.try_send(dht::Command::Shutdown);
         }
     })
