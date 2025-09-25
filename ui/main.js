@@ -38,7 +38,7 @@ function createTabElements(id) {
     <form class="dl-form" autocomplete="off">
       <div class="uri-row">
         <input name="uri" placeholder="Enter magnet link or file path" />
-        <button type="button" data-action="pick" title="Choose metainfo file">Choose...</button>
+        <button type="button" data-action="pick" title="Select metainfo file">Select...</button>
       </div>
       <div class="actions-row">
         <button class="start-btn" type="submit">Start download</button>
@@ -99,7 +99,7 @@ async function startDownload(panel, tabBtn) {
     return;
   }
 
-  const outputDir = await open({ multiple: false, directory: true, title: 'Choose output folder' });
+  const outputDir = await open({ multiple: false, directory: true, title: 'Select output folder' });
   if (!outputDir) return; // user cancelled
 
   const channel = new Channel();
