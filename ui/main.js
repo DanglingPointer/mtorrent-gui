@@ -44,7 +44,27 @@ function createTabElements(id) {
         <button class="start-btn" type="submit">Start download</button>
       </div>
     </form>
-    <div class="log-wrapper"><textarea readonly></textarea></div>
+    <div class="progress" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="progress-bar" style="width:0%"></div>
+      <div class="progress-label">0%</div>
+    </div>
+    <div class="peers-wrapper">
+      <div class="peers-summary" data-summary>Downloaded 0 / 0 bytes (0.00%)</div>
+      <div class="peers-table-container">
+        <table class="peers-table" aria-label="Connected peers">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Client</th>
+              <th>Origin</th>
+              <th>Downloaded</th>
+              <th>Uploaded</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   `;
   return panel;
 }
@@ -64,7 +84,11 @@ function setActiveTab(id) {
 
 async function startDownload(panel, tabBtn) {
   const input = panel.querySelector('input[name="uri"]');
-  const textarea = panel.querySelector('textarea');
+  const peersSummaryEl = panel.querySelector('[data-summary]');
+  const peersTbody = panel.querySelector('.peers-table tbody');
+  if (!peersSummaryEl || !peersTbody) {
+    throw new Error('Required peers UI elements missing');
+  }
   const titleEl = panel.querySelector('.title');
   const form = panel.querySelector('.dl-form');
 
@@ -80,7 +104,63 @@ async function startDownload(panel, tabBtn) {
 
   const channel = new Channel();
   channel.onmessage = msg => {
-    textarea.value = msg;
+    // Expect a JSON snapshot matching StateSnapshot serialization.
+    if (msg && typeof msg === 'object') {
+      try {
+        const bytes = msg.bytes || { total: 0, downloaded: 0 };
+        const total = bytes.total || 0;
+        const downloaded = bytes.downloaded || 0;
+        const pct = total > 0 ? Math.min(100, Math.max(0, (downloaded / total) * 100)) : 0;
+        const progressEl = panel.querySelector('.progress');
+        if (progressEl) {
+          progressEl.setAttribute('aria-valuenow', pct.toFixed(2));
+          const bar = progressEl.querySelector('.progress-bar');
+          const label = progressEl.querySelector('.progress-label');
+          if (bar) bar.style.width = pct + '%';
+          if (label) label.textContent = `${pct.toFixed(1)}%`;
+        }
+        // Build peer list: one peer per line -> IP (client | origin)
+        peersSummaryEl.textContent = `Downloaded ${downloaded} / ${total} bytes (${pct.toFixed(2)}%)`;
+        const peers = msg.peers || {};
+        // Clear existing rows efficiently
+        while (peersTbody.firstChild) peersTbody.removeChild(peersTbody.firstChild);
+        const frag = document.createDocumentFragment();
+        const sortedAddrs = Object.keys(peers).sort();
+        for (const addr of sortedAddrs) {
+          const p = peers[addr] || {};
+          const origin = p.origin || 'unknown';
+          const client = p.client || 'n/a';
+          const downloadedBytes = p.download && typeof p.download.bytes_received === 'number' ? p.download.bytes_received : null;
+          const uploadedBytes = p.upload && typeof p.upload.bytes_sent === 'number' ? p.upload.bytes_sent : null;
+          const downloadedVal = downloadedBytes == null ? 'n/a' : formatBytes(downloadedBytes);
+          const uploadedVal = uploadedBytes == null ? 'n/a' : formatBytes(uploadedBytes);
+          const tr = document.createElement('tr');
+          const tdAddr = document.createElement('td');
+          tdAddr.textContent = addr;
+          const tdClient = document.createElement('td');
+          tdClient.textContent = client;
+          const tdOrigin = document.createElement('td');
+          tdOrigin.textContent = origin;
+          const tdDown = document.createElement('td');
+          tdDown.textContent = downloadedVal;
+          tdDown.className = 'num';
+          const tdUp = document.createElement('td');
+          tdUp.textContent = uploadedVal;
+          tdUp.className = 'num';
+          tr.appendChild(tdAddr);
+          tr.appendChild(tdClient);
+          tr.appendChild(tdOrigin);
+          tr.appendChild(tdDown);
+          tr.appendChild(tdUp);
+          frag.appendChild(tr);
+        }
+        peersTbody.appendChild(frag);
+      } catch (_) {
+        peersSummaryEl.textContent = 'Error parsing snapshot';
+      }
+    } else {
+      peersSummaryEl.textContent = String(msg);
+    }
   };
 
   titleEl.textContent = 'Download in progress';
@@ -89,13 +169,25 @@ async function startDownload(panel, tabBtn) {
   form.querySelectorAll('input, button').forEach(el => el.disabled = true);
 
   try {
-    textarea.value = 'Loading...';
+    peersSummaryEl.textContent = 'Loading...';
     await invoke('start_download', { metainfoUri: uri, outputDir, callback: channel });
-    textarea.value = 'Download finished successfully!';
+    peersSummaryEl.textContent = 'Download finished successfully!';
   } catch (e) {
-    textarea.value = `Download failed: ${e}`;
+    peersSummaryEl.textContent = `Download failed: ${e}`;
   }
   titleEl.textContent = 'Download finished';
+  // Clear peers table
+  while (peersTbody.firstChild) peersTbody.removeChild(peersTbody.firstChild);
+}
+
+// Human-readable byte formatting
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const value = bytes / Math.pow(k, i);
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
 }
 
 function addNewTab(autoActivate = true) {

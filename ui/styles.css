@@ -261,8 +261,9 @@ body {
   flex-direction: column;
   padding: 0.75rem;
   gap: 0.75rem;
-  overflow: auto;
-  /* internal scrolling instead of body */
+  /* scrolling handled by inner peers table now */
+  min-height: 0;
+  /* allow inner flex children to shrink */
 }
 
 .tab-panel.hidden {
@@ -582,4 +583,95 @@ tbody tr:hover {
 input::placeholder,
 textarea::placeholder {
   color: var(--color-text-faint);
+}
+
+/* Progress bar */
+.progress {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 0.65rem;
+  line-height: 18px;
+  user-select: none;
+  box-shadow: inset 0 1px 2px rgba(var(--color-shadow-rgb) / 0.12);
+}
+
+.progress-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: linear-gradient(90deg, var(--color-brand-mtorrent) 0%, var(--color-brand-mtorrent-accent) 100%);
+  transition: width 0.25s ease;
+}
+
+.progress-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text);
+  mix-blend-mode: difference;
+  font-weight: 600;
+  letter-spacing: .5px;
+}
+
+/* Peers table area */
+.peers-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.peers-summary {
+  font-size: 0.8rem;
+  font-family: monospace;
+  color: var(--color-text-soft);
+}
+
+.peers-table-container {
+  flex: 1 1 auto;
+  border: 1px solid var(--color-log-border);
+  background: var(--color-log-bg);
+  border-radius: 4px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.peers-table {
+  width: 100%;
+  font-family: monospace;
+  display: table;
+  table-layout: fixed;
+}
+
+.peers-table thead th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.peers-table tbody td {
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.peers-table td.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Center all peer table text (override earlier alignment) */
+.peers-table th,
+.peers-table td {
+  text-align: center !important;
 }

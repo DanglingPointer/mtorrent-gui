@@ -10,7 +10,7 @@ use std::time::Duration;
 use tauri::Manager;
 
 struct Listener {
-    callback: tauri::ipc::Channel<String>,
+    callback: tauri::ipc::Channel<serde_json::Value>,
     canceller: Arc<()>,
 }
 
@@ -21,7 +21,10 @@ impl StateListener for Listener {
         if Arc::strong_count(&self.canceller) == 1 {
             ControlFlow::Break(())
         } else {
-            match self.callback.send(format!("{snapshot}")) {
+            let Ok(json_value) = serde_json::to_value(&snapshot) else {
+                return ControlFlow::Break(());
+            };
+            match self.callback.send(json_value) {
                 Ok(_) => ControlFlow::Continue(()),
                 Err(_) => ControlFlow::Break(()),
             }
@@ -41,7 +44,7 @@ struct State {
 async fn start_download(
     metainfo_uri: String,
     output_dir: String,
-    callback: tauri::ipc::Channel<String>,
+    callback: tauri::ipc::Channel<serde_json::Value>,
     state: tauri::State<'_, State>,
 ) -> Result<(), String> {
     let token = Arc::new(());
