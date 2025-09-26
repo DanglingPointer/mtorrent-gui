@@ -164,7 +164,13 @@ async function startDownload(panel, tabBtn) {
   };
 
   titleEl.textContent = 'Download in progress';
-  tabBtn.querySelector('.label').textContent = uri.slice(0, 12) || `Tab ${panel.dataset.tabId}`;
+  let torrentName;
+  try {
+    torrentName = await invoke('get_name', { metainfoUri: uri });
+  } catch {
+    torrentName = `Tab ${panel.dataset.tabId}`;
+  }
+  tabBtn.querySelector('.label').textContent = torrentName.slice(0, 12);
   form.classList.add('disabled');
   form.querySelectorAll('input, button').forEach(el => el.disabled = true);
 

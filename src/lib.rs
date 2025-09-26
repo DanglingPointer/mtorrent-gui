@@ -1,5 +1,5 @@
-use mtorrent::app;
 use mtorrent::utils::listener::{StateListener, StateSnapshot};
+use mtorrent::{app, utils};
 use mtorrent_dht as dht;
 use mtorrent_utils::{peer_id::PeerId, worker};
 use std::collections::HashMap;
@@ -77,6 +77,11 @@ fn stop_download(metainfo_uri: &str, state: tauri::State<'_, State>) {
     state.active_downloads.lock().unwrap().remove(metainfo_uri);
 }
 
+#[tauri::command]
+fn get_name(metainfo_uri: &str) -> Result<String, ()> {
+    utils::startup::get_torrent_name(metainfo_uri).ok_or(())
+}
+
 fn run_with_exit_code() -> i32 {
     let main_worker = worker::with_local_runtime(worker::rt::Config {
         name: "app".to_owned(),
@@ -119,7 +124,7 @@ fn run_with_exit_code() -> i32 {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
-        .invoke_handler(tauri::generate_handler![start_download, stop_download])
+        .invoke_handler(tauri::generate_handler![start_download, stop_download, get_name])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
