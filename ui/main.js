@@ -163,10 +163,10 @@ async function startDownload(panel, tabBtn) {
     }
   };
 
-  titleEl.textContent = 'Download in progress';
   let torrentName;
   try {
     torrentName = await invoke('get_name', { metainfoUri: uri });
+    titleEl.textContent = torrentName;
   } catch {
     torrentName = `Tab ${panel.dataset.tabId}`;
   }
@@ -181,7 +181,6 @@ async function startDownload(panel, tabBtn) {
   } catch (e) {
     peersSummaryEl.textContent = `Download failed: ${e}`;
   }
-  titleEl.textContent = 'Download finished';
   // Clear peers table
   while (peersTbody.firstChild) peersTbody.removeChild(peersTbody.firstChild);
 }
