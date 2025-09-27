@@ -1,3 +1,6 @@
+mod logging;
+
+use crate::logging::{Config, setup_log_rotation};
 use mtorrent::utils::listener::{StateListener, StateSnapshot};
 use mtorrent::{app, utils};
 use mtorrent_dht as dht;
@@ -82,6 +85,34 @@ fn get_name(metainfo_uri: &str) -> Result<String, ()> {
 }
 
 fn run_with_exit_code() -> i32 {
+    let Ok(current_dir) = std::env::current_dir() else {
+        eprintln!("Failed to get current dir");
+        return -1;
+    };
+
+    let (log_sink, mut log_writer) = setup_log_rotation(Config {
+        file_path: current_dir.join("mtorrent.log"),
+        max_files: 3,
+        max_file_size: 10 * 1024 * 1024, // 10 MiB
+        buffer_capacity: 32 * 1024,
+    });
+
+    std::thread::Builder::new()
+        .name("logger".to_owned())
+        .stack_size(128 * 1024)
+        .spawn(move || {
+            log_writer.write_logs().inspect_err(|e| eprintln!("Failed to write logs: {e}"))
+        })
+        .unwrap_or_else(|e| panic!("Failed to spawn logger thread: {e}"));
+
+    env_logger::Builder::from_default_env()
+        .filter(None, log::LevelFilter::Debug)
+        // .filter_module("mtorrent_dht", log::LevelFilter::Info)
+        // .filter_module("mtorrent::app", log::LevelFilter::Info)
+        // .filter_module("mtorrent_utils", log::LevelFilter::Debug)
+        .target(env_logger::Target::Pipe(Box::new(log_sink)))
+        .init();
+
     let main_worker = worker::with_local_runtime(worker::rt::Config {
         name: "app".to_owned(),
         io_enabled: true,
@@ -104,19 +135,15 @@ fn run_with_exit_code() -> i32 {
         ..Default::default()
     });
 
-    let (_dht_worker, dht_cmds) = app::dht::launch_node_runtime(
-        6881,
-        None,
-        std::env::current_dir().unwrap(),
-        true, /* use_upnp */
-    );
+    let (_dht_worker, dht_cmds) =
+        app::dht::launch_node_runtime(6881, None, current_dir, true /* use_upnp */);
 
     let state = State {
         peer_id: PeerId::generate_new(),
         pwp_runtime_handle: pwp_worker.runtime_handle().clone(),
         storage_runtime_handle: storage_worker.runtime_handle().clone(),
         dht_cmd_sender: dht_cmds,
-        active_downloads: Mutex::new(Default::default()),
+        active_downloads: Mutex::new(HashMap::new()),
     };
 
     let app = tauri::Builder::default()
