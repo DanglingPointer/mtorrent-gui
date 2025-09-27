@@ -107,18 +107,18 @@ async function startDownload(panel, tabBtn) {
     // Expect a JSON snapshot matching StateSnapshot serialization.
     if (msg && typeof msg === 'object') {
       try {
-        const bytes = msg.bytes || { total: 0, downloaded: 0 };
+        const bytes = msg.bytes;
         const total = bytes.total || 0;
         const downloaded = bytes.downloaded || 0;
         const pct = total > 0 ? Math.min(100, Math.max(0, (downloaded / total) * 100)) : 0;
+
         const progressEl = panel.querySelector('.progress');
-        if (progressEl) {
-          progressEl.setAttribute('aria-valuenow', pct.toFixed(2));
-          const bar = progressEl.querySelector('.progress-bar');
-          const label = progressEl.querySelector('.progress-label');
-          if (bar) bar.style.width = pct + '%';
-          if (label) label.textContent = `${pct.toFixed(1)}%`;
-        }
+        progressEl.setAttribute('aria-valuenow', pct.toFixed(2));
+
+        const bar = progressEl.querySelector('.progress-bar');
+        const label = progressEl.querySelector('.progress-label');
+        if (bar) bar.style.width = pct + '%';
+        if (label) label.textContent = `${pct.toFixed(1)}%`;
         // Build peer list: one peer per line -> IP (client | origin)
         peersSummaryEl.textContent = `Downloaded ${downloaded} / ${total} bytes (${pct.toFixed(2)}%)`;
         const peers = msg.peers || {};
@@ -128,10 +128,10 @@ async function startDownload(panel, tabBtn) {
         const sortedAddrs = Object.keys(peers).sort();
         for (const addr of sortedAddrs) {
           const p = peers[addr] || {};
-          const origin = p.origin || 'unknown';
+          const origin = p.origin;
           const client = p.client || 'n/a';
-          const downloadedBytes = p.download && typeof p.download.bytes_received === 'number' ? p.download.bytes_received : null;
-          const uploadedBytes = p.upload && typeof p.upload.bytes_sent === 'number' ? p.upload.bytes_sent : null;
+          const downloadedBytes = typeof p.download.bytes_received === 'number' ? p.download.bytes_received : null;
+          const uploadedBytes = typeof p.upload.bytes_sent === 'number' ? p.upload.bytes_sent : null;
           const downloadedVal = downloadedBytes == null ? 'n/a' : formatBytes(downloadedBytes);
           const uploadedVal = uploadedBytes == null ? 'n/a' : formatBytes(uploadedBytes);
           const tr = document.createElement('tr');
@@ -156,7 +156,7 @@ async function startDownload(panel, tabBtn) {
         }
         peersTbody.appendChild(frag);
       } catch (_) {
-        peersSummaryEl.textContent = 'Error parsing snapshot';
+        peersSummaryEl.textContent = JSON.stringify(msg);
       }
     } else {
       peersSummaryEl.textContent = String(msg);

@@ -2409,7 +2409,7 @@ dependencies = [
 [[package]]
 name = "mtorrent"
 version = "0.3.4"
-source = "git+https://github.com/DanglingPointer/mtorrent/?branch=master#b1087a57ce15046f4d9317f9593651c800118062"
+source = "git+https://github.com/DanglingPointer/mtorrent/?branch=master#8d699359b9b49b8b3a1c379b9b86522fefad4fea"
 dependencies = [
  "bytes",
  "clap",
@@ -2433,7 +2433,7 @@ dependencies = [
 [[package]]
 name = "mtorrent-core"
 version = "0.3.4"
-source = "git+https://github.com/DanglingPointer/mtorrent/?branch=master#b1087a57ce15046f4d9317f9593651c800118062"
+source = "git+https://github.com/DanglingPointer/mtorrent/?branch=master#8d699359b9b49b8b3a1c379b9b86522fefad4fea"
 dependencies = [
  "bitvec",
  "bytes",
@@ -2457,7 +2457,7 @@ dependencies = [
 [[package]]
 name = "mtorrent-dht"
 version = "0.3.4"
-source = "git+https://github.com/DanglingPointer/mtorrent/?branch=master#b1087a57ce15046f4d9317f9593651c800118062"
+source = "git+https://github.com/DanglingPointer/mtorrent/?branch=master#8d699359b9b49b8b3a1c379b9b86522fefad4fea"
 dependencies = [
  "bitvec",
  "derive_more 2.0.1",
@@ -2496,7 +2496,7 @@ dependencies = [
 [[package]]
 name = "mtorrent-utils"
 version = "0.3.4"
-source = "git+https://github.com/DanglingPointer/mtorrent/?branch=master#b1087a57ce15046f4d9317f9593651c800118062"
+source = "git+https://github.com/DanglingPointer/mtorrent/?branch=master#8d699359b9b49b8b3a1c379b9b86522fefad4fea"
 dependencies = [
  "bytes",
  "derive_more 2.0.1",

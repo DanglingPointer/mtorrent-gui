@@ -21,9 +21,8 @@ impl StateListener for Listener {
         if Arc::strong_count(&self.canceller) == 1 {
             ControlFlow::Break(())
         } else {
-            let Ok(json_value) = serde_json::to_value(&snapshot) else {
-                return ControlFlow::Break(());
-            };
+            let json_value = serde_json::to_value(&snapshot)
+                .unwrap_or_else(|e| serde_json::Value::String(e.to_string()));
             match self.callback.send(json_value) {
                 Ok(_) => ControlFlow::Continue(()),
                 Err(_) => ControlFlow::Break(()),
@@ -126,7 +125,7 @@ fn run_with_exit_code() -> i32 {
         .manage(state)
         .invoke_handler(tauri::generate_handler![start_download, stop_download, get_name])
         .build(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("error while building tauri application");
 
     app.run_return(move |app_handle, event| {
         if let tauri::RunEvent::ExitRequested { .. } = event {
