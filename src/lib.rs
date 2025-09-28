@@ -1,39 +1,16 @@
+mod listener;
 mod logging;
 
+use crate::listener::{Canceller, listener_with_canceller};
 use crate::logging::{Config, setup_log_rotation};
-use mtorrent::utils::listener::{StateListener, StateSnapshot};
 use mtorrent::{app, utils};
 use mtorrent_dht as dht;
 use mtorrent_utils::{peer_id::PeerId, worker};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::io;
-use std::ops::ControlFlow;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::sync::Mutex;
 use tauri::Manager;
-
-struct Listener {
-    callback: tauri::ipc::Channel<serde_json::Value>,
-    canceller: Arc<()>,
-}
-
-impl StateListener for Listener {
-    const INTERVAL: Duration = Duration::from_secs(1);
-
-    fn on_snapshot(&mut self, snapshot: StateSnapshot<'_>) -> ControlFlow<()> {
-        if Arc::strong_count(&self.canceller) == 1 {
-            ControlFlow::Break(())
-        } else {
-            let json_value = serde_json::to_value(&snapshot)
-                .unwrap_or_else(|e| serde_json::Value::String(e.to_string()));
-            match self.callback.send(json_value) {
-                Ok(_) => ControlFlow::Continue(()),
-                Err(_) => ControlFlow::Break(()),
-            }
-        }
-    }
-}
 
 const UPNP_ENABLED: bool = true;
 
@@ -42,7 +19,7 @@ struct State {
     pwp_runtime_handle: tokio::runtime::Handle,
     storage_runtime_handle: tokio::runtime::Handle,
     dht_cmd_sender: dht::CommandSink,
-    active_downloads: Mutex<HashMap<String, Arc<()>>>,
+    active_downloads: Mutex<HashMap<String, Canceller>>,
 }
 
 #[tauri::command]
@@ -52,13 +29,13 @@ async fn start_download(
     callback: tauri::ipc::Channel<serde_json::Value>,
     state: tauri::State<'_, State>,
 ) -> Result<(), String> {
-    let token = Arc::new(());
+    let (listener, canceller) = listener_with_canceller(callback, log::Level::Debug);
     match state.active_downloads.lock().unwrap().entry(metainfo_uri.clone()) {
         Entry::Occupied(_) => {
             return Err("already in progress".to_owned());
         }
         Entry::Vacant(entry) => {
-            entry.insert(token.clone());
+            entry.insert(canceller);
         }
     }
     let task = tokio::task::spawn_local(app::main::single_torrent(
@@ -66,10 +43,7 @@ async fn start_download(
         metainfo_uri,
         output_dir,
         Some(state.dht_cmd_sender.clone()),
-        Listener {
-            callback,
-            canceller: token,
-        },
+        listener,
         state.pwp_runtime_handle.clone(),
         state.storage_runtime_handle.clone(),
         UPNP_ENABLED,
