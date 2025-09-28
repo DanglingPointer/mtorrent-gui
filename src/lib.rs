@@ -9,7 +9,7 @@ use mtorrent_utils::{peer_id::PeerId, worker};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::io;
+use std::{env, io};
 use tauri::Manager;
 
 const UPNP_ENABLED: bool = true;
@@ -74,8 +74,13 @@ fn get_name(metainfo_uri: &str) -> Result<String, ()> {
     utils::startup::get_torrent_name(metainfo_uri).ok_or(())
 }
 
+#[tauri::command]
+fn get_cli_arg() -> Option<String> {
+    env::args().nth(1)
+}
+
 fn run_with_exit_code() -> io::Result<i32> {
-    let current_dir = std::env::current_dir()?;
+    let current_dir = env::current_dir()?;
 
     let (log_sink, mut log_writer) = setup_log_rotation(Config {
         file_path: current_dir.join("mtorrent.log"),
@@ -136,7 +141,7 @@ fn run_with_exit_code() -> io::Result<i32> {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
-        .invoke_handler(tauri::generate_handler![do_download, stop_download, get_name])
+        .invoke_handler(tauri::generate_handler![do_download, stop_download, get_name, get_cli_arg])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 

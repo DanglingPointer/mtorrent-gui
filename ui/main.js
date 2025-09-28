@@ -249,7 +249,14 @@ function addNewTab(autoActivate = true) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  // document.documentElement.dataset.theme = 'dark';
   document.getElementById('add-tab').addEventListener('click', () => addNewTab(true));
-  addNewTab(true); // initial tab
+  const { panel, btn } = addNewTab(true); // initial tab
+
+  // Check CLI arg for initial download
+  invoke('get_cli_arg').then(arg => {
+    if (arg) {
+      panel.querySelector('input[name="uri"]').value = arg;
+      startDownload(panel, btn);
+    }
+  }).catch(() => { /* ignore */ });
 });
