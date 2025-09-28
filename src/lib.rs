@@ -23,13 +23,15 @@ struct State {
 }
 
 #[tauri::command]
-async fn start_download(
+async fn do_download(
     metainfo_uri: String,
     output_dir: String,
     callback: tauri::ipc::Channel<serde_json::Value>,
     state: tauri::State<'_, State>,
 ) -> Result<(), String> {
     let (listener, canceller) = listener_with_canceller(callback, log::Level::Debug);
+
+    // store canceller unless duplicate
     match state.active_downloads.lock().unwrap().entry(metainfo_uri.clone()) {
         Entry::Occupied(_) => {
             return Err("already in progress".to_owned());
@@ -38,17 +40,28 @@ async fn start_download(
             entry.insert(canceller);
         }
     }
-    let task = tokio::task::spawn_local(app::main::single_torrent(
+
+    // launch download and wait for it to exit
+    let result = tokio::task::spawn_local(app::main::single_torrent(
         state.peer_id,
-        metainfo_uri,
+        metainfo_uri.clone(),
         output_dir,
         Some(state.dht_cmd_sender.clone()),
         listener,
         state.pwp_runtime_handle.clone(),
         state.storage_runtime_handle.clone(),
         UPNP_ENABLED,
-    ));
-    task.await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+    ))
+    .await;
+
+    // don't leak the canceller
+    state.active_downloads.lock().unwrap().remove(&metainfo_uri);
+
+    match result {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(e)) => Err(e.to_string()),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[tauri::command]
@@ -123,7 +136,7 @@ fn run_with_exit_code() -> io::Result<i32> {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
-        .invoke_handler(tauri::generate_handler![start_download, stop_download, get_name])
+        .invoke_handler(tauri::generate_handler![do_download, stop_download, get_name])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 

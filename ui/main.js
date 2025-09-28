@@ -176,7 +176,7 @@ async function startDownload(panel, tabBtn) {
 
   try {
     peersSummaryEl.textContent = 'Loading...';
-    await invoke('start_download', { metainfoUri: uri, outputDir, callback: channel });
+    await invoke('do_download', { metainfoUri: uri, outputDir, callback: channel });
     peersSummaryEl.textContent = 'Download finished successfully!';
   } catch (e) {
     peersSummaryEl.textContent = `Download failed: ${e}`;
