@@ -6,10 +6,10 @@ use crate::logging::{Config, setup_log_rotation};
 use mtorrent::{app, utils};
 use mtorrent_dht as dht;
 use mtorrent_utils::{peer_id::PeerId, worker};
+use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::io;
-use std::sync::Mutex;
 use tauri::Manager;
 
 const UPNP_ENABLED: bool = true;
@@ -32,7 +32,7 @@ async fn do_download(
     let (listener, canceller) = listener_with_canceller(callback, log::Level::Debug);
 
     // store canceller unless duplicate
-    match state.active_downloads.lock().unwrap().entry(metainfo_uri.clone()) {
+    match state.active_downloads.lock().entry(metainfo_uri.clone()) {
         Entry::Occupied(_) => {
             return Err("already in progress".to_owned());
         }
@@ -55,7 +55,7 @@ async fn do_download(
     .await;
 
     // don't leak the canceller
-    state.active_downloads.lock().unwrap().remove(&metainfo_uri);
+    state.active_downloads.lock().remove(&metainfo_uri);
 
     match result {
         Ok(Ok(())) => Ok(()),
@@ -66,7 +66,7 @@ async fn do_download(
 
 #[tauri::command]
 fn stop_download(metainfo_uri: &str, state: tauri::State<'_, State>) {
-    state.active_downloads.lock().unwrap().remove(metainfo_uri);
+    state.active_downloads.lock().remove(metainfo_uri);
 }
 
 #[tauri::command]
@@ -143,7 +143,7 @@ fn run_with_exit_code() -> io::Result<i32> {
     Ok(app.run_return(move |app_handle, event| {
         if let tauri::RunEvent::ExitRequested { .. } = event {
             let state = app_handle.state::<State>();
-            state.active_downloads.lock().unwrap().clear();
+            state.active_downloads.lock().clear();
             _ = state.dht_cmd_sender.try_send(dht::Command::Shutdown);
         }
     }))

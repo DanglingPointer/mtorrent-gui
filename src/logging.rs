@@ -1,22 +1,10 @@
 use file_rotate::compression::Compression;
 use file_rotate::suffix::AppendCount;
 use file_rotate::{ContentLimit, FileRotate};
+use parking_lot::{Condvar, Mutex};
 use std::path::PathBuf;
-use std::sync::{Arc, Condvar, LockResult, Mutex, MutexGuard};
+use std::sync::Arc;
 use std::{io, mem};
-
-trait IntoGuard<'a, T> {
-    fn into_guard(self) -> MutexGuard<'a, T>;
-}
-
-impl<'a, T: 'a> IntoGuard<'a, T> for LockResult<MutexGuard<'a, T>> {
-    fn into_guard(self) -> MutexGuard<'a, T> {
-        match self {
-            Ok(guard) => guard,
-            Err(poisoned) => poisoned.into_inner(),
-        }
-    }
-}
 
 struct State {
     buffer: Mutex<Vec<u8>>,
@@ -47,7 +35,7 @@ pub struct LogWriter(Arc<State>);
 impl io::Write for LogSink {
     fn write(&mut self, mut input: &[u8]) -> io::Result<usize> {
         let LogSink(state) = self;
-        let mut locked_buffer = state.buffer.lock().into_guard();
+        let mut locked_buffer = state.buffer.lock();
 
         let remaining_capacity = state.config.buffer_capacity - locked_buffer.len();
         if remaining_capacity == 0 {
@@ -87,10 +75,8 @@ impl LogWriter {
         let mut buffer = Vec::with_capacity(state.config.buffer_capacity);
         loop {
             // wait for data
-            let mut locked_buffer = state
-                .signal
-                .wait_while(state.buffer.lock().into_guard(), |buf| buf.is_empty())
-                .into_guard();
+            let mut locked_buffer = state.buffer.lock();
+            state.signal.wait_while(&mut locked_buffer, |buf| buf.is_empty());
 
             // swap buffers and unlock the mutex
             mem::swap(&mut *locked_buffer, &mut buffer);
