@@ -49,7 +49,7 @@ function createTabElements(id) {
       <div class="progress-label">0%</div>
     </div>
     <div class="peers-wrapper">
-      <div class="peers-summary" data-summary>Downloaded 0 / 0 bytes (0.00%)</div>
+      <div class="peers-summary" data-summary>No active download</div>
       <div class="peers-table-container">
         <table class="peers-table" aria-label="Connected peers">
           <thead>
@@ -120,7 +120,7 @@ async function startDownload(panel, tabBtn) {
         if (bar) bar.style.width = pct + '%';
         if (label) label.textContent = `${pct.toFixed(1)}%`;
         // Build peer list: one peer per line -> IP (client | origin)
-        peersSummaryEl.textContent = `Downloaded ${downloaded} / ${total} bytes (${pct.toFixed(2)}%)`;
+        peersSummaryEl.textContent = `Downloaded ${formatBytesKiB(downloaded)} / ${formatBytesKiB(total)} (${pct.toFixed(2)}%)`;
         const peers = msg.peers || {};
         // Clear existing rows efficiently
         while (peersTbody.firstChild) peersTbody.removeChild(peersTbody.firstChild);
@@ -132,8 +132,8 @@ async function startDownload(panel, tabBtn) {
           const client = p.client || 'n/a';
           const downloadedBytes = typeof p.download.bytes_received === 'number' ? p.download.bytes_received : null;
           const uploadedBytes = typeof p.upload.bytes_sent === 'number' ? p.upload.bytes_sent : null;
-          const downloadedVal = downloadedBytes == null ? 'n/a' : formatBytes(downloadedBytes);
-          const uploadedVal = uploadedBytes == null ? 'n/a' : formatBytes(uploadedBytes);
+          const downloadedVal = downloadedBytes == null ? 'n/a' : formatBytesRounded(downloadedBytes);
+          const uploadedVal = uploadedBytes == null ? 'n/a' : formatBytesRounded(uploadedBytes);
           const tr = document.createElement('tr');
           const tdAddr = document.createElement('td');
           tdAddr.textContent = addr;
@@ -186,13 +186,19 @@ async function startDownload(panel, tabBtn) {
 }
 
 // Human-readable byte formatting
-function formatBytes(bytes) {
+function formatBytesRounded(bytes) {
   if (bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
   const k = 1024;
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const value = bytes / Math.pow(k, i);
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
+}
+
+// Format number with space separators every 3 digits
+function formatBytesKiB(bytes) {
+  const kib = Math.floor(bytes / 1024);
+  return kib.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' KiB';
 }
 
 function addNewTab(autoActivate = true) {
