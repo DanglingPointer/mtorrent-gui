@@ -36,9 +36,23 @@
         "ext": [
           "torrent"
         ],
-        "mimeType": "application/x-bittorrent;x-scheme-handler/magnet;",
+        "mimeType": "application/x-bittorrent",
         "name": "Torrent File"
       }
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "ui/assets/mtorrent.desktop"
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "magnet"
+        ]
+      }
+    }
   }
 }

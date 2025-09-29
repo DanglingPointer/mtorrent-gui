@@ -1,0 +1,16 @@
+# see https://github.com/tauri-apps/tauri/blob/4188ffdafcaa7c3c8b000973146c9384a873e741/crates/tauri-bundler/src/bundle/linux/freedesktop/main.desktop
+# and https://github.com/tauri-apps/tauri/pull/5180
+[Desktop Entry]
+Categories={{categories}}
+{{#if comment}}
+Comment={{comment}}
+{{/if}}
+Exec={{exec}} %U
+StartupWMClass={{exec}}
+Icon={{icon}}
+Name={{name}}
+Terminal=false
+Type=Application
+{{#if mime_type}}
+MimeType={{mime_type}}
+{{/if}}

@@ -146,6 +146,7 @@ fn run_with_exit_code() -> io::Result<i32> {
     };
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
