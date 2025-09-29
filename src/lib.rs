@@ -80,10 +80,18 @@ fn get_cli_arg() -> Option<String> {
 }
 
 fn run_with_exit_code() -> io::Result<i32> {
-    let current_dir = env::current_dir()?;
+    let local_data_dir = match dirs_next::data_local_dir()
+        .or_else(dirs_next::data_dir)
+        .or_else(dirs_next::config_dir)
+    {
+        Some(dir) => dir,
+        None => env::current_dir()?,
+    };
+    let local_data_dir = local_data_dir.join(env!("CARGO_PKG_NAME"));
+    println!("Log directory: {}", local_data_dir.display());
 
     let (log_sink, mut log_writer) = setup_log_rotation(Config {
-        file_path: current_dir.join("mtorrent.log"),
+        file_path: local_data_dir.join("mtorrent.log"),
         max_files: 3,
         max_file_size: 10 * 1024 * 1024, // 10 MiB
         buffer_capacity: 32 * 1024,      // 32 KiB
@@ -127,7 +135,7 @@ fn run_with_exit_code() -> io::Result<i32> {
     })?;
 
     let (_dht_worker, dht_cmds) =
-        app::dht::launch_node_runtime(6881, None, current_dir, UPNP_ENABLED)?;
+        app::dht::launch_node_runtime(6881, None, local_data_dir, UPNP_ENABLED)?;
 
     let state = State {
         peer_id: PeerId::generate_new(),
@@ -143,7 +151,7 @@ fn run_with_exit_code() -> io::Result<i32> {
         .manage(state)
         .invoke_handler(tauri::generate_handler![do_download, stop_download, get_name, get_cli_arg])
         .build(tauri::generate_context!())
-        .expect("error while building tauri application");
+        .map_err(io::Error::other)?;
 
     Ok(app.run_return(move |app_handle, event| {
         if let tauri::RunEvent::ExitRequested { .. } = event {
