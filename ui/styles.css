@@ -659,11 +659,15 @@ textarea::placeholder {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .peers-table tbody td {
   font-size: 0.7rem;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .peers-table td.num {
