@@ -1,6 +1,7 @@
 const { invoke } = window.__TAURI__.core;
 const { Channel } = window.__TAURI__.core;
 const { open } = window.__TAURI__.dialog;
+const { getCurrentWindow } = window.__TAURI__.window;
 
 let tabIdSeq = 0;
 
@@ -259,4 +260,58 @@ window.addEventListener('DOMContentLoaded', () => {
       startDownload(panel, btn);
     }
   }).catch(() => { /* ignore */ });
+
+  getCurrentWindow().onDragDropEvent((event) => {
+    switch (event.payload.type) {
+      case 'drop':
+        highlightUriRow(false);
+        if (event.payload.paths.length != 1) {
+          showToast('Please drop a single torrent file.');
+          return;
+        }
+        // Find current active tab
+        const { activeBtn, activePanel, form, uriRow } = getActiveTabContext();
+        // If active tab's form is enabled, use it; otherwise show angry toast
+        if (!form || form.classList.contains('disabled')) {
+          showToast('Download already in progress');
+          return;
+        }
+        // validate the file is .torrent
+        const filePath = event.payload.paths[0].trim();
+        if (!filePath.endsWith('.torrent')) {
+          showToast('Please select a torrent file.');
+          return;
+        }
+        // set the value and start download
+        form.querySelector('input[name="uri"]').value = filePath;
+        startDownload(activePanel, activeBtn);
+        if (uriRow) {
+          uriRow.classList.remove('drop-target');
+        }
+        break;
+      case 'enter':
+        highlightUriRow(true);
+        break;
+      case 'leave':
+        highlightUriRow(false);
+        break;
+      default:
+        break;
+    }
+  });
+
+  function getActiveTabContext() {
+    const activeBtn = document.querySelector('.tab-btn.active');
+    const activePanel = activeBtn ? document.querySelector(`.tab-panel[data-tab-id="${activeBtn.dataset.tabId}"]`) : null;
+    const form = activePanel ? activePanel.querySelector('.dl-form') : null;
+    const uriRow = form ? form.querySelector('.uri-row') : null;
+    return { activeBtn, activePanel, form, uriRow };
+  }
+
+  function highlightUriRow(on) {
+    const { form, uriRow } = getActiveTabContext();
+    if (!uriRow || !form || form.classList.contains('disabled')) return;
+    uriRow.classList.toggle('drop-target', on);
+  }
+
 });

@@ -675,3 +675,11 @@ textarea::placeholder {
 .peers-table td {
   text-align: center !important;
 }
+
+/* Drag & Drop highlight */
+.uri-row.drop-target {
+  outline: 2px dashed var(--color-brand-mtorrent-accent);
+  outline-offset: 3px;
+  background: linear-gradient(120deg, var(--color-bg-subtle), var(--color-bg-accent));
+  transition: background 160ms ease, outline-color 160ms ease;
+}
