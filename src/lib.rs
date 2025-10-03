@@ -9,6 +9,7 @@ use mtorrent_utils::{peer_id::PeerId, worker};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::path::PathBuf;
 use std::{env, io};
 use tauri::Manager;
 
@@ -16,10 +17,11 @@ const UPNP_ENABLED: bool = true;
 
 struct State {
     peer_id: PeerId,
+    local_data_dir: PathBuf,
+    active_downloads: Mutex<HashMap<String, Canceller>>,
     pwp_runtime_handle: tokio::runtime::Handle,
     storage_runtime_handle: tokio::runtime::Handle,
     dht_cmd_sender: dht::CommandSink,
-    active_downloads: Mutex<HashMap<String, Canceller>>,
 }
 
 #[tauri::command]
@@ -43,14 +45,20 @@ async fn do_download(
 
     // launch download and wait for it to exit
     let result = tokio::task::spawn_local(app::main::single_torrent(
-        state.peer_id,
         metainfo_uri.clone(),
-        output_dir,
-        Some(state.dht_cmd_sender.clone()),
         listener,
-        state.pwp_runtime_handle.clone(),
-        state.storage_runtime_handle.clone(),
-        UPNP_ENABLED,
+        app::main::Config {
+            local_peer_id: state.peer_id,
+            output_dir: output_dir.into(),
+            config_dir: state.local_data_dir.clone(),
+            use_upnp: UPNP_ENABLED,
+            listener_port: None,
+        },
+        app::main::Context {
+            dht_handle: Some(state.dht_cmd_sender.clone()),
+            pwp_runtime: state.pwp_runtime_handle.clone(),
+            storage_runtime: state.storage_runtime_handle.clone(),
+        },
     ))
     .await;
 
@@ -135,14 +143,15 @@ fn run_with_exit_code() -> io::Result<i32> {
     })?;
 
     let (_dht_worker, dht_cmds) =
-        app::dht::launch_node_runtime(6881, None, local_data_dir, UPNP_ENABLED)?;
+        app::dht::launch_dht_node_runtime(6881, None, local_data_dir.clone(), UPNP_ENABLED)?;
 
     let state = State {
         peer_id: PeerId::generate_new(),
+        local_data_dir,
+        active_downloads: Mutex::new(HashMap::new()),
         pwp_runtime_handle: pwp_worker.runtime_handle().clone(),
         storage_runtime_handle: storage_worker.runtime_handle().clone(),
         dht_cmd_sender: dht_cmds,
-        active_downloads: Mutex::new(HashMap::new()),
     };
 
     let app = tauri::Builder::default()
