@@ -142,8 +142,12 @@ fn run_with_exit_code() -> io::Result<i32> {
         ..Default::default()
     })?;
 
-    let (_dht_worker, dht_cmds) =
-        app::dht::launch_dht_node_runtime(6881, None, local_data_dir.clone(), UPNP_ENABLED)?;
+    let (_dht_worker, dht_cmds) = app::dht::launch_dht_node_runtime(app::dht::Config {
+        local_port: 6881,
+        max_concurrent_queries: None,
+        config_dir: local_data_dir.clone(),
+        use_upnp: UPNP_ENABLED,
+    })?;
 
     let state = State {
         peer_id: PeerId::generate_new(),
