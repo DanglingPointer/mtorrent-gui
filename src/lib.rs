@@ -52,7 +52,7 @@ async fn do_download(
             output_dir: output_dir.into(),
             config_dir: state.local_data_dir.clone(),
             use_upnp: UPNP_ENABLED,
-            listener_port: None,
+            pwp_port: None,
         },
         app::main::Context {
             dht_handle: Some(state.dht_cmd_sender.clone()),

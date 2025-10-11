@@ -131,8 +131,8 @@ async function startDownload(panel, tabBtn) {
           const p = peers[addr] || {};
           const origin = p.origin;
           const client = p.client || 'n/a';
-          const downloadedBytes = typeof p.download.bytes_received === 'number' ? p.download.bytes_received : null;
-          const uploadedBytes = typeof p.upload.bytes_sent === 'number' ? p.upload.bytes_sent : null;
+          const downloadedBytes = typeof p.download.bytesReceived === 'number' ? p.download.bytesReceived : null;
+          const uploadedBytes = typeof p.upload.bytesSent === 'number' ? p.upload.bytesSent : null;
           const downloadedVal = downloadedBytes == null ? 'n/a' : formatBytesRounded(downloadedBytes);
           const uploadedVal = uploadedBytes == null ? 'n/a' : formatBytesRounded(uploadedBytes);
           const tr = document.createElement('tr');
