@@ -3,9 +3,9 @@ mod logging;
 
 use crate::listener::{Canceller, listener_with_canceller};
 use crate::logging::{Config, setup_log_rotation};
+use mtorrent::utils::re_exports::mtorrent_dht as dht;
+use mtorrent::utils::re_exports::mtorrent_utils::{peer_id::PeerId, worker};
 use mtorrent::{app, utils};
-use mtorrent_dht as dht;
-use mtorrent_utils::{peer_id::PeerId, worker};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
@@ -147,6 +147,7 @@ fn run_with_exit_code() -> io::Result<i32> {
         max_concurrent_queries: None,
         config_dir: local_data_dir.clone(),
         use_upnp: UPNP_ENABLED,
+        bootstrap_nodes_override: None,
     })?;
 
     let state = State {
