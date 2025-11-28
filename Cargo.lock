@@ -2493,7 +2493,7 @@ dependencies = [
 
 [[package]]
 name = "mtorrent-gui"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "dirs-next",
  "env_logger",
