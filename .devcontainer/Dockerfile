@@ -25,7 +25,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
 USER $USERNAME
 
 # install tauri cli (prebuilt binary) as non-root
-RUN curl -LsSf "https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.9.4/cargo-tauri-x86_64-unknown-linux-gnu.tgz" -o /tmp/cargo-tauri.tgz \
+RUN curl -LsSf "https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.9.6/cargo-tauri-x86_64-unknown-linux-gnu.tgz" -o /tmp/cargo-tauri.tgz \
     && tar -xzf /tmp/cargo-tauri.tgz -C ${CARGO_HOME:-/usr/local/cargo}/bin \
     && rm /tmp/cargo-tauri.tgz \
     && cargo-tauri --version
