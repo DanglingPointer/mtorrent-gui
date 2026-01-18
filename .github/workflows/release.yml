@@ -4,7 +4,6 @@ permissions:
   contents: write
 
 on:
-  workflow_dispatch:
   push:
     tags:
     - 'v[0-9]+.[0-9]+.[0-9]+'
@@ -33,3 +32,4 @@ jobs:
         releaseName: 'v__VERSION__'
         releaseDraft: false
         prerelease: false
+        generateReleaseNotes: true
