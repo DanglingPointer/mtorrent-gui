@@ -88,6 +88,8 @@ fn get_cli_arg() -> Option<String> {
 }
 
 fn run_with_exit_code() -> io::Result<i32> {
+    // unsafe { env::set_var("MTORRENT_PWP_MODE", "UTP_ONLY") }
+
     let local_data_dir = match dirs_next::data_local_dir()
         .or_else(dirs_next::data_dir)
         .or_else(dirs_next::config_dir)
@@ -122,7 +124,7 @@ fn run_with_exit_code() -> io::Result<i32> {
 
     let main_worker = worker::with_local_runtime(worker::rt::Config {
         name: "app".to_owned(),
-        io_enabled: true,
+        io_enabled: false,
         time_enabled: true,
         ..Default::default()
     })?;
@@ -135,7 +137,7 @@ fn run_with_exit_code() -> io::Result<i32> {
         ..Default::default()
     })?;
 
-    let pwp_worker = worker::with_runtime(worker::rt::Config {
+    let pwp_worker = worker::with_local_runtime(worker::rt::Config {
         name: "pwp".to_owned(),
         io_enabled: true,
         time_enabled: true,

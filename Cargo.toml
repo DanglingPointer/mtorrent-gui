@@ -20,7 +20,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-mtorrent = "0.3"
+mtorrent = { git = "https://github.com/DanglingPointer/mtorrent/", branch = "master" }
 
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
