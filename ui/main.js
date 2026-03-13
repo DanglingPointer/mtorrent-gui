@@ -57,6 +57,7 @@ function createTabElements(id) {
             <tr>
               <th>Address</th>
               <th>Client</th>
+              <th>Encrypted</th>
               <th>Origin</th>
               <th>Downloaded</th>
               <th>Uploaded</th>
@@ -131,6 +132,7 @@ async function startDownload(panel, tabBtn) {
           const p = peers[addr] || {};
           const origin = p.origin;
           const client = p.client || 'n/a';
+          const encrypted = typeof p.encrypted === 'boolean' ? (p.encrypted ? 'yes' : 'no') : 'n/a';
           const downloadedBytes = typeof p.download.bytesReceived === 'number' ? p.download.bytesReceived : null;
           const uploadedBytes = typeof p.upload.bytesSent === 'number' ? p.upload.bytesSent : null;
           const downloadedVal = downloadedBytes == null ? 'n/a' : formatBytesRounded(downloadedBytes);
@@ -140,6 +142,8 @@ async function startDownload(panel, tabBtn) {
           tdAddr.textContent = addr;
           const tdClient = document.createElement('td');
           tdClient.textContent = client;
+          const tdEncrypted = document.createElement('td');
+          tdEncrypted.textContent = encrypted;
           const tdOrigin = document.createElement('td');
           tdOrigin.textContent = origin;
           const tdDown = document.createElement('td');
@@ -150,6 +154,7 @@ async function startDownload(panel, tabBtn) {
           tdUp.className = 'num';
           tr.appendChild(tdAddr);
           tr.appendChild(tdClient);
+          tr.appendChild(tdEncrypted);
           tr.appendChild(tdOrigin);
           tr.appendChild(tdDown);
           tr.appendChild(tdUp);
