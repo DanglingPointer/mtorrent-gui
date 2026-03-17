@@ -115,7 +115,8 @@ fn run_with_exit_code() -> io::Result<i32> {
         })?;
 
     env_logger::Builder::from_default_env()
-        .filter(None, log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Debug)
+        .filter_module("mtorrent_core::utp", log::LevelFilter::Info)
         // .filter_module("mtorrent_dht", log::LevelFilter::Info)
         // .filter_module("mtorrent::app", log::LevelFilter::Info)
         // .filter_module("mtorrent_utils", log::LevelFilter::Debug)
