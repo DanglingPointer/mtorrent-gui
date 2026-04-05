@@ -18,6 +18,7 @@ const UPNP_ENABLED: bool = true;
 struct State {
     peer_id: PeerId,
     local_data_dir: PathBuf,
+    bind_interface: Option<String>,
     active_downloads: Mutex<HashMap<String, Canceller>>,
     pwp_runtime_handle: tokio::runtime::Handle,
     storage_runtime_handle: tokio::runtime::Handle,
@@ -53,6 +54,7 @@ async fn do_download(
             config_dir: state.local_data_dir.clone(),
             use_upnp: UPNP_ENABLED,
             pwp_port: None,
+            bind_interface: state.bind_interface.clone(),
         },
         app::main::Context {
             dht_handle: Some(state.dht_cmd_sender.clone()),
@@ -114,13 +116,15 @@ fn run_with_exit_code() -> io::Result<i32> {
             log_writer.write_logs().inspect_err(|e| eprintln!("Failed to write logs: {e}"))
         })?;
 
-    env_logger::Builder::from_default_env()
+    env_logger::Builder::from_env("MTORRENT_LOG")
         .filter_level(log::LevelFilter::Debug)
         // .filter_module("mtorrent_dht", log::LevelFilter::Info)
         // .filter_module("mtorrent::app", log::LevelFilter::Info)
         // .filter_module("mtorrent_utils", log::LevelFilter::Debug)
         .target(env_logger::Target::Pipe(Box::new(log_sink)))
         .init();
+
+    let interface = env::var("MTORRENT_NET_IF").ok();
 
     let main_worker = worker::with_local_runtime(worker::rt::Config {
         name: "app".to_owned(),
@@ -150,11 +154,14 @@ fn run_with_exit_code() -> io::Result<i32> {
         config_dir: local_data_dir.clone(),
         use_upnp: UPNP_ENABLED,
         bootstrap_nodes_override: None,
+        bind_interface: interface.clone(),
+        query_timeout: None,
     })?;
 
     let state = State {
         peer_id: PeerId::generate_new(),
         local_data_dir,
+        bind_interface: interface,
         active_downloads: Mutex::new(HashMap::new()),
         pwp_runtime_handle: pwp_worker.runtime_handle().clone(),
         storage_runtime_handle: storage_worker.runtime_handle().clone(),
