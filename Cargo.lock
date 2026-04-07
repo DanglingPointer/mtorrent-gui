@@ -2529,9 +2529,9 @@ dependencies = [
 
 [[package]]
 name = "mtorrent"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db5547d3f4fda83783ac9dab68dfe09b6cd1073c7ae2e7d1d17438bbd22caac"
+checksum = "bec345d015ef3ad6d8ce994881b5b6f49f29368b9746a21125f488f3e7c59f50"
 dependencies = [
  "bytes",
  "derive_more 2.1.1",
@@ -2550,9 +2550,9 @@ dependencies = [
 
 [[package]]
 name = "mtorrent-core"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53a9e0321a6e4c7ca94337d0777b855a5da6248c204fcc072b6feafda7627435"
+checksum = "0a6ba91f4b097cf98b51668c90888143b67b32bbb6b8176d5613fca81d78b72a"
 dependencies = [
  "bitvec",
  "bytes",
@@ -2578,9 +2578,9 @@ dependencies = [
 
 [[package]]
 name = "mtorrent-dht"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0ff519579ebe312042c6cbe468d8839a3855db5f7d2f4cb3102ffb32cd11297"
+checksum = "84ac34b8ef4bfefcdd8917e5a0cc36de9ea47b1447c05f3f68a61f5face28889"
 dependencies = [
  "bitvec",
  "derive_more 2.1.1",
@@ -2620,9 +2620,9 @@ dependencies = [
 
 [[package]]
 name = "mtorrent-utils"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdba8c92c37f8f30142554891b1a208bc75a833f0fa6d053360701d200194ab6"
+checksum = "b525835f9a5afca274263e3d884e2f6b672a31ca71507faef2d646df90954b48"
 dependencies = [
  "bytes",
  "derive_more 2.1.1",
