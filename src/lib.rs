@@ -10,7 +10,7 @@ use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::path::PathBuf;
-use std::{env, io};
+use std::{env, io, panic};
 use tauri::Manager;
 
 const UPNP_ENABLED: bool = true;
@@ -123,6 +123,10 @@ fn run_with_exit_code() -> io::Result<i32> {
         // .filter_module("mtorrent_utils", log::LevelFilter::Debug)
         .target(env_logger::Target::Pipe(Box::new(log_sink)))
         .init();
+
+    panic::set_hook(Box::new(|info| {
+        log::error!("Thread {} {info}", std::thread::current().name().unwrap_or("<unnamed>"))
+    }));
 
     let interface = env::var("MTORRENT_NET_IF").ok();
 
