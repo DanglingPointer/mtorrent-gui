@@ -155,7 +155,7 @@ fn run_with_exit_code() -> io::Result<i32> {
 
     let (_dht_worker, dht_cmds) = app::dht::launch_dht_node_runtime(app::dht::Config {
         local_port: 6881,
-        max_concurrent_queries: None,
+        max_concurrent_queries: Some(0),
         config_dir: local_data_dir.clone(),
         use_upnp: UPNP_ENABLED,
         bootstrap_nodes_override: None,
