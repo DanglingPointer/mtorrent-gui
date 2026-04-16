@@ -149,6 +149,7 @@ fn run_with_exit_code() -> io::Result<i32> {
         name: "pwp".to_owned(),
         io_enabled: true,
         time_enabled: true,
+        max_blocking_threads: 32,
         ..Default::default()
     })?;
 
