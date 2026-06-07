@@ -11,10 +11,7 @@
 			"problemMatcher": [
 				"$rustc"
 			],
-			"group": {
-				"kind": "test",
-				"isDefault": true
-			},
+			"group": "test",
 			"label": "rust: tauri dev"
 		},
 		{
@@ -46,6 +43,16 @@
 			],
 			"group": "none",
 			"label": "rust: cargo clippy"
+		},
+		{
+			"type": "shell",
+			"command": "npx vitest run",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"label": "js: vitest run",
+			"problemMatcher": []
 		},
 	]
 }

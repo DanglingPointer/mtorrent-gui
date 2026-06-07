@@ -8,6 +8,9 @@ RUN curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/
 # install tauri dependencies, see https://v2.tauri.app/start/prerequisites/
 RUN apt-get update && apt-get install -y libwebkit2gtk-4.1-dev
 
+# install Node.js for frontend tests
+RUN apt-get install -y nodejs npm
+
 # create non-root user for vscode
 ARG USERNAME=devcontainer
 ARG USER_UID=1000
