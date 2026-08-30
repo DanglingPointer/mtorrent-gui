@@ -125,7 +125,10 @@ fn run_with_exit_code() -> io::Result<i32> {
         .init();
 
     panic::set_hook(Box::new(|info| {
-        log::error!("Thread {} {info}", std::thread::current().name().unwrap_or("<unnamed>"))
+        let thread = std::thread::current();
+        let thread_name = thread.name().unwrap_or("<unnamed>");
+        eprintln!("Thread {thread_name} {info}");
+        log::error!("Thread {thread_name} {info}");
     }));
 
     let interface = env::var("MTORRENT_NET_IF").ok();
