@@ -34,6 +34,7 @@ function createTabElements(id) {
   const panel = document.createElement('div');
   panel.className = 'tab-panel';
   panel.dataset.tabId = id;
+  panel.dataset.downloadInProgress = 'false';
   panel.innerHTML = `
     <h2 class="title">Welcome to mtorrent!</h2>
     <form class="dl-form" autocomplete="off">
@@ -83,6 +84,16 @@ function createTabButton(id) {
 function setActiveTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tabId === id));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('hidden', p.dataset.tabId !== id));
+}
+
+function setDownloadFinished(panel, isFinished) {
+  if (!panel) return;
+  panel.dataset.downloadFinished = String(Boolean(isFinished));
+}
+
+function isDownloadFinished(panel) {
+  if (!panel) return false;
+  return panel.dataset.downloadFinished === 'true';
 }
 
 async function startDownload(panel, tabBtn) {
@@ -192,6 +203,7 @@ async function startDownload(panel, tabBtn) {
   } catch (e) {
     peersSummaryEl.textContent = `Download failed: ${e}`;
   }
+  setDownloadFinished(panel, true);
   // Clear peers table
   while (peersTbody.firstChild) peersTbody.removeChild(peersTbody.firstChild);
 }
@@ -224,9 +236,8 @@ function addNewTab(autoActivate = true) {
 
   btn.addEventListener('click', (e) => {
     if ((e.target).classList.contains('close')) {
-      // Stop download
-      const uri = panel.querySelector('input[name="uri"]').value.trim();
-      if (uri) {
+      if (!isDownloadFinished(panel)) {
+        const uri = panel.querySelector('input[name="uri"]').value.trim();
         invoke('stop_download', { metainfoUri: uri }).catch(() => { /* ignore */ });
       }
       // Close tab

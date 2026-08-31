@@ -82,6 +82,42 @@ describe('Tab Management', () => {
     expect(remaining[0].classList.contains('active')).toBe(true);
   });
 
+  test('closing a non-finished tab calls stop_download', () => {
+    const panel = document.querySelector('.tab-panel');
+    panel.querySelector('[data-summary]').textContent = 'Loading...';
+
+    const closeBtn = document.querySelector('.tab-btn .close');
+    closeBtn.click();
+
+    expect(window.__mocks__.invoke).toHaveBeenCalledWith('stop_download', expect.anything());
+  });
+
+  test('closing a finished tab does not call stop_download', () => {
+    const panel = document.querySelector('.tab-panel');
+    panel.dataset.downloadFinished = 'true';
+    panel.querySelector('input[name="uri"]').value = 'magnet:?xt=urn:btih:active';
+
+    const closeBtn = document.querySelector('.tab-btn .close');
+    closeBtn.click();
+
+    expect(window.__mocks__.invoke).not.toHaveBeenCalledWith('stop_download', {
+      metainfoUri: 'magnet:?xt=urn:btih:active',
+    });
+  });
+
+  test('closing a tab with no downloadFinished flag still calls stop_download when a URI is present', () => {
+    const panel = document.querySelector('.tab-panel');
+    delete panel.dataset.downloadFinished;
+    panel.querySelector('input[name="uri"]').value = 'magnet:?xt=urn:btih:legacy';
+
+    const closeBtn = document.querySelector('.tab-btn .close');
+    closeBtn.click();
+
+    expect(window.__mocks__.invoke).toHaveBeenCalledWith('stop_download', {
+      metainfoUri: 'magnet:?xt=urn:btih:legacy',
+    });
+  });
+
   test('each tab panel contains expected elements', () => {
     const panel = document.querySelector('.tab-panel');
     expect(panel.querySelector('.title')).not.toBeNull();
