@@ -89,6 +89,40 @@ fn get_cli_arg() -> Option<String> {
     env::args().nth(1)
 }
 
+#[cfg(unix)]
+fn raise_open_file_limit() {
+    // copied from https://github.com/sachesi/rill/commit/e3743916e999bedb69c1d951b5bc2785689e50cb#diff-42cb6807ad74b3e201c5a7ca98b911c5fa08380e942be6e4ac5807f8377f87fcR158
+
+    const OPEN_FILES_CEILING: libc::rlim_t = 1 << 20;
+
+    let mut limit = libc::rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+
+    if unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut limit) } != 0 {
+        log::warn!("Could not read the open file limit: {}", io::Error::last_os_error());
+        return;
+    }
+
+    let wanted = limit.rlim_max.min(OPEN_FILES_CEILING);
+    if limit.rlim_cur >= wanted {
+        return;
+    }
+
+    let previous = limit.rlim_cur;
+    limit.rlim_cur = wanted;
+
+    if unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &limit) } == 0 {
+        log::info!("Raised the open file limit from {previous} to {wanted}");
+    } else {
+        log::warn!(
+            "Could not raise the open file limit from {previous}: {}",
+            io::Error::last_os_error()
+        );
+    }
+}
+
 fn run_with_exit_code() -> io::Result<i32> {
     // unsafe { env::set_var("MTORRENT_PWP_MODE", "UTP_ONLY") }
 
@@ -130,6 +164,9 @@ fn run_with_exit_code() -> io::Result<i32> {
         eprintln!("Thread {thread_name} {info}");
         log::error!("Thread {thread_name} {info}");
     }));
+
+    #[cfg(unix)]
+    raise_open_file_limit();
 
     let interface = env::var("MTORRENT_NET_IF").ok();
 

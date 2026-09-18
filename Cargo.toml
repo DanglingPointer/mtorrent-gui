@@ -35,3 +35,6 @@ log = "0.4"
 env_logger = "0.11"
 file-rotate = "0.8.0"
 parking_lot = "0.12.5"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

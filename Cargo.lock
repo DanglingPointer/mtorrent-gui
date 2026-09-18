@@ -2558,6 +2558,7 @@ dependencies = [
  "dirs-next",
  "env_logger",
  "file-rotate",
+ "libc",
  "log",
  "mtorrent",
  "parking_lot",
