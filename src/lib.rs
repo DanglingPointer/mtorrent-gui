@@ -55,6 +55,7 @@ async fn do_download(
             use_upnp: UPNP_ENABLED,
             pwp_port: None,
             bind_interface: state.bind_interface.clone(),
+            download_strategy: Default::default(),
         },
         app::main::Context {
             dht_handle: Some(state.dht_cmd_sender.clone()),
