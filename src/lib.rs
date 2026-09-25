@@ -3,13 +3,15 @@ mod logging;
 
 use crate::listener::{Canceller, listener_with_canceller};
 use crate::logging::{Config, setup_log_rotation};
+use mtorrent::utils::re_exports::mtorrent_core::input;
 use mtorrent::utils::re_exports::mtorrent_dht as dht;
 use mtorrent::utils::re_exports::mtorrent_utils::{peer_id::PeerId, worker};
 use mtorrent::{app, utils};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::{env, io, mem, panic};
 use tauri::Manager;
 use tokio::sync::oneshot;
@@ -22,17 +24,29 @@ struct DownloadEntry {
     join_handle: task::JoinHandle<()>,
 }
 
+type TorrentInfoHash = [u8; 20];
+
+fn get_torrent_info_hash(metainfo_uri: &str) -> io::Result<TorrentInfoHash> {
+    if Path::new(metainfo_uri).is_file() {
+        let metainfo = input::Metainfo::from_file(metainfo_uri)?;
+        Ok(*metainfo.info_hash())
+    } else {
+        let magnet = input::MagnetLink::from_str(metainfo_uri).map_err(io::Error::other)?;
+        Ok(*magnet.info_hash())
+    }
+}
+
 struct State {
     peer_id: PeerId,
     local_data_dir: PathBuf,
     bind_interface: Option<String>,
-    active_downloads: Mutex<HashMap<String, DownloadEntry>>,
+    active_downloads: Mutex<HashMap<TorrentInfoHash, DownloadEntry>>,
     pwp_runtime_handle: tokio::runtime::Handle,
     storage_runtime_handle: tokio::runtime::Handle,
     dht_cmd_sender: dht::CommandSink,
 }
 
-async fn shutdown_all_downloads(active_downloads: HashMap<String, DownloadEntry>) {
+async fn shutdown_all_downloads(active_downloads: HashMap<TorrentInfoHash, DownloadEntry>) {
     log::info!("Shutting down all active downloads");
 
     // drop all cancellers
@@ -49,13 +63,15 @@ async fn do_download(
     callback: tauri::ipc::Channel<serde_json::Value>,
     state: tauri::State<'_, State>,
 ) -> Result<(), String> {
+    let torrent_id = get_torrent_info_hash(&metainfo_uri).map_err(|e| e.to_string())?;
+
     let (listener, canceller) = listener_with_canceller(callback, log::Level::Debug);
     let (result_tx, result_rx) = oneshot::channel();
 
     {
         // reserve entry unless it's a duplicate
         let mut active_downloads = state.active_downloads.lock();
-        let entry_slot = match active_downloads.entry(metainfo_uri.clone()) {
+        let entry_slot = match active_downloads.entry(torrent_id) {
             Entry::Occupied(_) => {
                 return Err("already in progress".to_owned());
             }
@@ -95,7 +111,7 @@ async fn do_download(
     let result = result_rx.await;
 
     // clean up the stale entry
-    state.active_downloads.lock().remove(&metainfo_uri);
+    state.active_downloads.lock().remove(&torrent_id);
 
     match result {
         Ok(Ok(())) => Ok(()),
@@ -106,10 +122,12 @@ async fn do_download(
 
 #[tauri::command]
 async fn stop_download(metainfo_uri: &str, state: tauri::State<'_, State>) -> Result<(), String> {
+    let torrent_id = get_torrent_info_hash(metainfo_uri).map_err(|e| e.to_string())?;
+
     let Some(DownloadEntry {
         canceller,
         join_handle,
-    }) = state.active_downloads.lock().remove(metainfo_uri)
+    }) = state.active_downloads.lock().remove(&torrent_id)
     else {
         return Ok(());
     };
