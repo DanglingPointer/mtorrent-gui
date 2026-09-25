@@ -10,19 +10,36 @@ use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::path::PathBuf;
-use std::{env, io, panic};
+use std::{env, io, mem, panic};
 use tauri::Manager;
+use tokio::sync::oneshot;
+use tokio::task;
 
 const UPNP_ENABLED: bool = true;
+
+struct DownloadEntry {
+    canceller: Canceller,
+    join_handle: task::JoinHandle<()>,
+}
 
 struct State {
     peer_id: PeerId,
     local_data_dir: PathBuf,
     bind_interface: Option<String>,
-    active_downloads: Mutex<HashMap<String, Canceller>>,
+    active_downloads: Mutex<HashMap<String, DownloadEntry>>,
     pwp_runtime_handle: tokio::runtime::Handle,
     storage_runtime_handle: tokio::runtime::Handle,
     dht_cmd_sender: dht::CommandSink,
+}
+
+async fn shutdown_all_downloads(active_downloads: HashMap<String, DownloadEntry>) {
+    log::info!("Shutting down all active downloads");
+
+    // drop all cancellers
+    let join_handles = active_downloads.into_values().map(|entry| entry.join_handle);
+
+    // join all handles
+    futures_util::future::join_all(join_handles).await;
 }
 
 #[tauri::command]
@@ -33,22 +50,20 @@ async fn do_download(
     state: tauri::State<'_, State>,
 ) -> Result<(), String> {
     let (listener, canceller) = listener_with_canceller(callback, log::Level::Debug);
+    let (result_tx, result_rx) = oneshot::channel();
 
-    // store canceller unless duplicate
-    match state.active_downloads.lock().entry(metainfo_uri.clone()) {
-        Entry::Occupied(_) => {
-            return Err("already in progress".to_owned());
-        }
-        Entry::Vacant(entry) => {
-            entry.insert(canceller);
-        }
-    }
+    {
+        // reserve entry unless it's a duplicate
+        let mut active_downloads = state.active_downloads.lock();
+        let entry_slot = match active_downloads.entry(metainfo_uri.clone()) {
+            Entry::Occupied(_) => {
+                return Err("already in progress".to_owned());
+            }
+            Entry::Vacant(entry) => entry,
+        };
 
-    // launch download and wait for it to exit
-    let result = tokio::task::spawn_local(app::main::single_torrent(
-        metainfo_uri.clone(),
-        listener,
-        app::main::Config {
+        // spawn the download task
+        let cfg = app::main::Config {
             local_peer_id: state.peer_id,
             output_dir: output_dir.into(),
             config_dir: state.local_data_dir.clone(),
@@ -56,16 +71,30 @@ async fn do_download(
             pwp_port: None,
             bind_interface: state.bind_interface.clone(),
             download_strategy: Default::default(),
-        },
-        app::main::Context {
+        };
+        let ctx = app::main::Context {
             dht_handle: Some(state.dht_cmd_sender.clone()),
             pwp_runtime: state.pwp_runtime_handle.clone(),
             storage_runtime: state.storage_runtime_handle.clone(),
-        },
-    ))
-    .await;
+        };
+        let uri = metainfo_uri.clone();
 
-    // don't leak the canceller
+        let join_handle = tokio::task::spawn_local(async move {
+            let result = app::main::single_torrent(uri, listener, cfg, ctx).await;
+            _ = result_tx.send(result);
+        });
+
+        // populate the download entry and unlock the mutex
+        entry_slot.insert(DownloadEntry {
+            canceller,
+            join_handle,
+        });
+    }
+
+    // wait for download to finish
+    let result = result_rx.await;
+
+    // clean up the stale entry
     state.active_downloads.lock().remove(&metainfo_uri);
 
     match result {
@@ -76,8 +105,18 @@ async fn do_download(
 }
 
 #[tauri::command]
-fn stop_download(metainfo_uri: &str, state: tauri::State<'_, State>) {
-    state.active_downloads.lock().remove(metainfo_uri);
+async fn stop_download(metainfo_uri: &str, state: tauri::State<'_, State>) -> Result<(), String> {
+    let Some(DownloadEntry {
+        canceller,
+        join_handle,
+    }) = state.active_downloads.lock().remove(metainfo_uri)
+    else {
+        return Ok(());
+    };
+
+    drop(canceller);
+    _ = join_handle.await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -226,8 +265,8 @@ fn run_with_exit_code() -> io::Result<i32> {
     Ok(app.run_return(move |app_handle, event| {
         if let tauri::RunEvent::ExitRequested { .. } = event {
             let state = app_handle.state::<State>();
-            state.active_downloads.lock().clear();
-            _ = state.dht_cmd_sender.try_send(dht::Command::Shutdown);
+            let active_downloads = mem::take(&mut *state.active_downloads.lock());
+            main_worker.runtime_handle().block_on(shutdown_all_downloads(active_downloads));
         }
     }))
 }

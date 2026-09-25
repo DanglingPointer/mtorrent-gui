@@ -20,7 +20,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-mtorrent = "0.6.1"
+mtorrent = "0.8.0"
 
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
@@ -35,6 +35,7 @@ log = "0.4"
 env_logger = "0.11"
 file-rotate = "0.8"
 parking_lot = "0.12"
+futures-util = { version = "0.3", default-features = false }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
