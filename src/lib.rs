@@ -194,13 +194,11 @@ fn raise_open_file_limit() {
 fn run_with_exit_code() -> io::Result<i32> {
     // unsafe { env::set_var("MTORRENT_PWP_MODE", "UTP_ONLY") }
 
-    let local_data_dir = match dirs_next::data_local_dir()
-        .or_else(dirs_next::data_dir)
-        .or_else(dirs_next::config_dir)
-    {
-        Some(dir) => dir,
-        None => env::current_dir()?,
-    };
+    let local_data_dir =
+        match dirs::data_local_dir().or_else(dirs::data_dir).or_else(dirs::config_dir) {
+            Some(dir) => dir,
+            None => env::current_dir()?,
+        };
     let local_data_dir = local_data_dir.join(env!("CARGO_PKG_NAME"));
     println!("Log directory: {}", local_data_dir.display());
 
