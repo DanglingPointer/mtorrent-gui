@@ -233,6 +233,8 @@ fn run_with_exit_code() -> io::Result<i32> {
         log::error!("Thread {thread_name} {info}");
     }));
 
+    log::info!("Starting {} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+
     #[cfg(unix)]
     raise_open_file_limit();
 
@@ -263,7 +265,7 @@ fn run_with_exit_code() -> io::Result<i32> {
 
     let (_dht_worker, dht_cmds) = app::dht::launch_dht_node_runtime(app::dht::Config {
         local_port: 6881,
-        max_concurrent_queries: Some(50),
+        max_concurrent_queries: Some(100),
         config_dir: local_data_dir.clone(),
         use_upnp: UPNP_ENABLED,
         bootstrap_nodes_override: None,
