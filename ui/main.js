@@ -96,6 +96,16 @@ function isDownloadFinished(panel) {
   return panel.dataset.downloadFinished === 'true';
 }
 
+function setProgress(panel, pct) {
+  const progressEl = panel.querySelector('.progress');
+  progressEl.setAttribute('aria-valuenow', pct.toFixed(2));
+
+  const bar = progressEl.querySelector('.progress-bar');
+  const label = progressEl.querySelector('.progress-label');
+  if (bar) bar.style.width = pct + '%';
+  if (label) label.textContent = `${pct.toFixed(1)}%`;
+}
+
 async function startDownload(panel, tabBtn) {
   const input = panel.querySelector('input[name="uri"]');
   const peersSummaryEl = panel.querySelector('[data-summary]');
@@ -125,14 +135,8 @@ async function startDownload(panel, tabBtn) {
         const total = bytes.total || 0;
         const downloaded = bytes.downloaded || 0;
         const pct = total > 0 ? Math.min(100, Math.max(0, (downloaded / total) * 100)) : 0;
+        setProgress(panel, pct);
 
-        const progressEl = panel.querySelector('.progress');
-        progressEl.setAttribute('aria-valuenow', pct.toFixed(2));
-
-        const bar = progressEl.querySelector('.progress-bar');
-        const label = progressEl.querySelector('.progress-label');
-        if (bar) bar.style.width = pct + '%';
-        if (label) label.textContent = `${pct.toFixed(1)}%`;
         // Build peer list: one peer per line -> IP (client | origin)
         peersSummaryEl.textContent = `Downloaded ${formatBytesKiB(downloaded)} / ${formatBytesKiB(total)} (${pct.toFixed(2)}%)`;
         const peers = msg.peers || {};
@@ -200,6 +204,7 @@ async function startDownload(panel, tabBtn) {
     peersSummaryEl.textContent = 'Loading...';
     await invoke('do_download', { metainfoUri: uri, outputDir, callback: channel });
     peersSummaryEl.textContent = 'Download finished successfully!';
+    setProgress(panel, 100);
   } catch (e) {
     peersSummaryEl.textContent = `Download failed: ${e}`;
   }

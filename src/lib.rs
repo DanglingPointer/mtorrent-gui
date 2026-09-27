@@ -1,7 +1,7 @@
 mod listener;
 mod logging;
 
-use crate::listener::{Canceller, listener_with_canceller};
+use crate::listener::Listener;
 use crate::logging::{Config, setup_log_rotation};
 use mtorrent::utils::re_exports::mtorrent_core::input;
 use mtorrent::utils::re_exports::mtorrent_dht as dht;
@@ -20,13 +20,13 @@ use tokio::task;
 const UPNP_ENABLED: bool = true;
 
 struct DownloadEntry {
-    canceller: Canceller,
+    canceller: oneshot::Sender<()>,
     join_handle: task::JoinHandle<()>,
 }
 
 type TorrentInfoHash = [u8; 20];
 
-fn get_torrent_info_hash(metainfo_uri: &str) -> io::Result<TorrentInfoHash> {
+fn get_info_hash(metainfo_uri: &str) -> io::Result<TorrentInfoHash> {
     if Path::new(metainfo_uri).is_file() {
         let metainfo = input::Metainfo::from_file(metainfo_uri)?;
         Ok(*metainfo.info_hash())
@@ -46,7 +46,7 @@ struct State {
     dht_cmd_sender: dht::CommandSink,
 }
 
-async fn shutdown_all_downloads(active_downloads: HashMap<TorrentInfoHash, DownloadEntry>) {
+async fn stop_all_downloads(active_downloads: HashMap<TorrentInfoHash, DownloadEntry>) {
     log::info!("Shutting down all active downloads");
 
     // drop all cancellers
@@ -57,16 +57,33 @@ async fn shutdown_all_downloads(active_downloads: HashMap<TorrentInfoHash, Downl
 }
 
 #[tauri::command]
+async fn stop_download(metainfo_uri: &str, state: tauri::State<'_, State>) -> Result<(), String> {
+    let torrent_id = get_info_hash(metainfo_uri).map_err(|e| e.to_string())?;
+
+    let Some(DownloadEntry {
+        canceller,
+        join_handle,
+    }) = state.active_downloads.lock().remove(&torrent_id)
+    else {
+        return Ok(());
+    };
+
+    drop(canceller);
+    _ = join_handle.await;
+    Ok(())
+}
+
+#[tauri::command]
 async fn do_download(
     metainfo_uri: String,
     output_dir: String,
     callback: tauri::ipc::Channel<serde_json::Value>,
     state: tauri::State<'_, State>,
 ) -> Result<(), String> {
-    let torrent_id = get_torrent_info_hash(&metainfo_uri).map_err(|e| e.to_string())?;
+    let torrent_id = get_info_hash(&metainfo_uri).map_err(|e| e.to_string())?;
 
-    let (listener, canceller) = listener_with_canceller(callback, log::Level::Debug);
     let (result_tx, result_rx) = oneshot::channel();
+    let (canceller, cancelled) = oneshot::channel();
 
     {
         // reserve entry unless it's a duplicate
@@ -87,16 +104,23 @@ async fn do_download(
             pwp_port: None,
             bind_interface: state.bind_interface.clone(),
             download_strategy: Default::default(),
+            mode: Default::default(),
         };
         let ctx = app::main::Context {
             dht_handle: Some(state.dht_cmd_sender.clone()),
             pwp_runtime: state.pwp_runtime_handle.clone(),
             storage_runtime: state.storage_runtime_handle.clone(),
         };
-        let uri = metainfo_uri.clone();
 
         let join_handle = tokio::task::spawn_local(async move {
-            let result = app::main::single_torrent(uri, listener, cfg, ctx).await;
+            let result = app::main::single_torrent(
+                metainfo_uri,
+                Listener::new(callback, log::Level::Debug),
+                async { _ = cancelled.await },
+                cfg,
+                ctx,
+            )
+            .await;
             _ = result_tx.send(result);
         });
 
@@ -114,27 +138,13 @@ async fn do_download(
     state.active_downloads.lock().remove(&torrent_id);
 
     match result {
-        Ok(Ok(())) => Ok(()),
+        Ok(Ok(outcome)) => match outcome {
+            app::main::Outcome::Finished => Ok(()),
+            app::main::Outcome::Cancelled => Err("cancelled".into()),
+        },
         Ok(Err(e)) => Err(e.to_string()),
         Err(e) => Err(e.to_string()),
     }
-}
-
-#[tauri::command]
-async fn stop_download(metainfo_uri: &str, state: tauri::State<'_, State>) -> Result<(), String> {
-    let torrent_id = get_torrent_info_hash(metainfo_uri).map_err(|e| e.to_string())?;
-
-    let Some(DownloadEntry {
-        canceller,
-        join_handle,
-    }) = state.active_downloads.lock().remove(&torrent_id)
-    else {
-        return Ok(());
-    };
-
-    drop(canceller);
-    _ = join_handle.await;
-    Ok(())
 }
 
 #[tauri::command]
@@ -253,7 +263,7 @@ fn run_with_exit_code() -> io::Result<i32> {
 
     let (_dht_worker, dht_cmds) = app::dht::launch_dht_node_runtime(app::dht::Config {
         local_port: 6881,
-        max_concurrent_queries: None,
+        max_concurrent_queries: Some(50),
         config_dir: local_data_dir.clone(),
         use_upnp: UPNP_ENABLED,
         bootstrap_nodes_override: None,
@@ -284,7 +294,7 @@ fn run_with_exit_code() -> io::Result<i32> {
         if let tauri::RunEvent::ExitRequested { .. } = event {
             let state = app_handle.state::<State>();
             let active_downloads = mem::take(&mut *state.active_downloads.lock());
-            main_worker.runtime_handle().block_on(shutdown_all_downloads(active_downloads));
+            main_worker.runtime_handle().block_on(stop_all_downloads(active_downloads));
         }
     }))
 }

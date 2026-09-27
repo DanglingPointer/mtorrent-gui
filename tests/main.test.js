@@ -343,6 +343,87 @@ describe('Progress Channel Updates', () => {
     expect(cells[5].textContent).toBe('250 B');             // Downloaded
     expect(cells[6].textContent).toBe('100 B');             // Uploaded
   });
+
+  test('progress is set to 100% when download finishes successfully', async () => {
+    let capturedChannel;
+    let resolveDownload;
+    window.__mocks__.invoke.mockImplementation((cmd, args) => {
+      if (cmd === 'get_name') return Promise.resolve('Torrent');
+      if (cmd === 'do_download') {
+        capturedChannel = args.callback;
+        return new Promise(r => { resolveDownload = r; });
+      }
+      if (cmd === 'get_cli_arg') return Promise.resolve(null);
+      return Promise.resolve(null);
+    });
+    window.__mocks__.open.mockResolvedValue('/tmp');
+
+    await loadApp();
+
+    const input = document.querySelector('input[name="uri"]');
+    input.value = 'magnet:?xt=urn:btih:finish';
+
+    const form = document.querySelector('.dl-form');
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+
+    await vi.waitFor(() => {
+      expect(capturedChannel).toBeDefined();
+    });
+
+    capturedChannel.onmessage({ bytes: { total: 1000, downloaded: 990 }, peers: {} });
+
+    const progress = document.querySelector('.progress');
+    const bar = document.querySelector('.progress-bar');
+    const label = document.querySelector('.progress-label');
+    expect(bar.style.width).toBe('99%');
+
+    resolveDownload();
+
+    await vi.waitFor(() => {
+      const summary = document.querySelector('[data-summary]');
+      expect(summary.textContent).toBe('Download finished successfully!');
+    });
+    expect(bar.style.width).toBe('100%');
+    expect(label.textContent).toBe('100.0%');
+    expect(progress.getAttribute('aria-valuenow')).toBe('100.00');
+  });
+
+  test('progress is not set to 100% when download fails', async () => {
+    let capturedChannel;
+    let rejectDownload;
+    window.__mocks__.invoke.mockImplementation((cmd, args) => {
+      if (cmd === 'get_name') return Promise.resolve('Torrent');
+      if (cmd === 'do_download') {
+        capturedChannel = args.callback;
+        return new Promise((_, reject) => { rejectDownload = reject; });
+      }
+      if (cmd === 'get_cli_arg') return Promise.resolve(null);
+      return Promise.resolve(null);
+    });
+    window.__mocks__.open.mockResolvedValue('/tmp');
+
+    await loadApp();
+
+    const input = document.querySelector('input[name="uri"]');
+    input.value = 'magnet:?xt=urn:btih:failpct';
+
+    const form = document.querySelector('.dl-form');
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+
+    await vi.waitFor(() => {
+      expect(capturedChannel).toBeDefined();
+    });
+
+    capturedChannel.onmessage({ bytes: { total: 1000, downloaded: 250 }, peers: {} });
+    rejectDownload('boom');
+
+    await vi.waitFor(() => {
+      const summary = document.querySelector('[data-summary]');
+      expect(summary.textContent).toContain('Download failed');
+    });
+    expect(document.querySelector('.progress-bar').style.width).toBe('25%');
+    expect(document.querySelector('.progress-label').textContent).toBe('25.0%');
+  });
 });
 
 describe('File Picker', () => {
