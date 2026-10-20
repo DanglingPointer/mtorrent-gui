@@ -105,6 +105,7 @@ async fn do_download(
             bind_interface: state.bind_interface.clone(),
             download_strategy: Default::default(),
             mode: Default::default(),
+            file_selection: Default::default(),
         };
         let ctx = app::main::Context {
             dht_handle: Some(state.dht_cmd_sender.clone()),
